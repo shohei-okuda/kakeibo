@@ -238,7 +238,7 @@ function SheetTab(props){
   var sorted=[].concat(records).sort(function(a,b){return a.yearMonth.localeCompare(b.yearMonth)});
   if(sorted.length===0)return h("div",{style:{textAlign:"center",padding:"50px 20px",color:"rgba(255,255,255,0.3)",fontSize:13}},"データがありません");
   var cb=function(align){return{padding:"9px 11px",fontSize:11,fontFamily:"monospace",textAlign:align||"right",whiteSpace:"nowrap",borderBottom:"1px solid rgba(255,255,255,0.05)"}};
-  var hb=function(align,c){return Object.assign({},cb(align||"center"),{color:c||"rgba(255,255,255,0.7)",fontWeight:700,fontSize:10,background:"rgba(0,0,0,0.35)",position:"sticky",top:0})};
+  var hb=function(align,c,top){return Object.assign({},cb(align||"center"),{color:c||"rgba(255,255,255,0.7)",fontWeight:700,fontSize:10,background:"rgba(0,0,0,0.35)",position:"sticky",top:top||0})};
   var sL={position:"sticky",left:0,zIndex:2,borderRight:"1px solid rgba(255,255,255,0.1)"};
   var table;
   if(!transposed){
@@ -252,10 +252,10 @@ function SheetTab(props){
           h("th",{rowSpan:2,style:Object.assign({},hb("right",TC),{borderLeft:"1px solid rgba(255,255,255,0.1)",minWidth:95})},"総資産")
         ),
         h("tr",null,
-          cashItems.map(function(it,i){return h("th",{key:it.id,style:Object.assign({},hb("right","rgba(255,255,255,0.55)"),{minWidth:92})},it.name)}),
-          h("th",{style:Object.assign({},hb("right",CC+"dd"),{minWidth:92})},"現金計"),
-          invItems.map(function(it){return h("th",{key:it.id,style:Object.assign({},hb("right","rgba(255,255,255,0.55)"),{minWidth:92})},it.name)}),
-          h("th",{style:Object.assign({},hb("right",IC+"dd"),{minWidth:92})},"投資計")
+          cashItems.map(function(it,i){return h("th",{key:it.id,style:Object.assign({},hb("right","rgba(255,255,255,0.55)",30),{minWidth:92})},it.name)}),
+          h("th",{style:Object.assign({},hb("right",CC+"dd",30),{minWidth:92})},"現金計"),
+          invItems.map(function(it){return h("th",{key:it.id,style:Object.assign({},hb("right","rgba(255,255,255,0.55)",30),{minWidth:92})},it.name)}),
+          h("th",{style:Object.assign({},hb("right",IC+"dd",30),{minWidth:92})},"投資計")
         )
       ),
       h("tbody",null,sorted.map(function(rec,ri){
@@ -288,6 +288,19 @@ function SheetTab(props){
       rows.push(h("tr",{key:"gt"+gi},h("td",{style:Object.assign({},cb("left"),sL,{color:grp[3],fontWeight:700,zIndex:1,background:grp[3]+"15"})},grp[4]),sorted.map(function(r){return Td2(sumObj(r[grp[1]]),grp[3],true)})));
     });
     rows.push(h("tr",{key:"total"},h("td",{style:Object.assign({},cb("left"),sL,{color:TC,fontWeight:800,zIndex:1,background:TC+"20"})},"総資産"),sorted.map(function(r){return h("td",{key:r.id,style:{padding:"9px 11px",fontSize:11,fontFamily:"monospace",textAlign:"right",color:TC,fontWeight:800}},"¥"+fmt(sumObj(r.cash)+sumObj(r.inv)))})));
+    rows.push(h("tr",{key:"ratio"},
+      h("td",{style:Object.assign({},cb("left"),sL,{color:"rgba(255,255,255,0.6)",fontWeight:700,fontSize:10,zIndex:1,background:"rgba(255,255,255,0.05)"})},"現金:投資比率"),
+      sorted.map(function(r){
+        var ct=sumObj(r.cash),it2=sumObj(r.inv),tot=ct+it2;
+        return h("td",{key:r.id,style:{padding:"9px 11px",fontSize:10,textAlign:"center",whiteSpace:"nowrap",borderBottom:"1px solid rgba(255,255,255,0.05)"}},
+          tot>0?h("span",null,
+            h("span",{style:{color:CC,fontWeight:700}},((ct/tot)*100).toFixed(0)+"%"),
+            h("span",{style:{color:"rgba(255,255,255,0.3)"}}," : "),
+            h("span",{style:{color:IC,fontWeight:700}},((it2/tot)*100).toFixed(0)+"%")
+          ):h("span",{style:{color:"rgba(255,255,255,0.18)"}},"—")
+        )
+      })
+    ));
     table=h("table",{style:{borderCollapse:"collapse",minWidth:"100%",width:"max-content"}},h("thead",null,rows[0]),h("tbody",null,rows.slice(1)))
   }
   return h("div",null,
@@ -416,23 +429,32 @@ function App(){
           h("div",{style:{fontSize:10,color:"rgba(255,255,255,0.35)",letterSpacing:2,marginBottom:8,fontWeight:700}},"月別推移"),
           h(AreaChart,{data:chartData})
         ),
-        (cPie.length>0||iPie.length>0)&&h("div",{style:{display:"flex",gap:10}},
-          [{pie:cPie,label:"現金内訳",color:CC},{pie:iPie,label:"投資内訳",color:IC}].map(function(x){
-            return x.pie.length>0&&h("div",{key:x.label,style:Object.assign({},cs,{flex:1,marginBottom:0})},
-              h("div",{style:{fontSize:10,color:x.color,letterSpacing:2,marginBottom:4,fontWeight:700,textAlign:"center"}},x.label),
-              h(PieChart,{data:x.pie}),
-              x.pie.map(function(d,i){
-                var pieTotal=x.pie.reduce(function(a,p){return a+p.value},0);
-                var pct=pieTotal>0?((d.value/pieTotal)*100).toFixed(1):"0.0";
-                return h("div",{key:i,style:{display:"flex",alignItems:"center",gap:4,marginBottom:3}},
-                  h("div",{style:{width:8,height:8,borderRadius:2,background:d.color,flexShrink:0}}),
-                  h("span",{style:{flex:1,fontSize:10,color:"rgba(255,255,255,0.6)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},d.name),
-                  h("span",{style:{fontSize:10,color:d.color,fontWeight:700,marginRight:4}},pct+"%"),
-                  h("span",{style:{fontSize:10,fontFamily:"monospace",color:"rgba(255,255,255,0.5)"}},"¥"+fmt(d.value))
-                )})
+        lT>0&&h((function(){
+          // 統合パイデータ: 現金合計 + 各投資項目
+          var unifiedPie=[];
+          // 現金合計を1つのセグメントとして追加
+          if(lC>0) unifiedPie.push({name:"現金合計",value:lC,color:CC,isCash:true});
+          // 各投資項目を個別に追加
+          iPie.forEach(function(d,i){unifiedPie.push({name:d.name,value:d.value,color:PIE[(i+1)%PIE.length],isCash:false})});
+          var upTotal=unifiedPie.reduce(function(a,d){return a+d.value},0);
+          return h("div",{style:Object.assign({},cs,{marginBottom:12})},
+            h("div",{style:{fontSize:10,color:"rgba(255,255,255,0.35)",letterSpacing:2,marginBottom:8,fontWeight:700}},"資産構成（全体比率）"),
+            h("div",{style:{display:"flex",gap:12,alignItems:"flex-start"}},
+              h("div",{style:{flexShrink:0}},h(PieChart,{data:unifiedPie})),
+              h("div",{style:{flex:1,paddingTop:4}},
+                unifiedPie.map(function(d,i){
+                  var pct=upTotal>0?((d.value/upTotal)*100).toFixed(1):"0.0";
+                  return h("div",{key:i,style:{display:"flex",alignItems:"center",gap:5,marginBottom:5}},
+                    h("div",{style:{width:9,height:9,borderRadius:2,background:d.color,flexShrink:0}}),
+                    h("span",{style:{flex:1,fontSize:11,color:"rgba(255,255,255,0.7)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},d.name),
+                    h("span",{style:{fontSize:11,color:d.color,fontWeight:700,marginRight:4,flexShrink:0}},pct+"%"),
+                    h("span",{style:{fontSize:10,fontFamily:"monospace",color:"rgba(255,255,255,0.4)",flexShrink:0}},"¥"+fmt(d.value))
+                  )
+                })
+              )
             )
-          })
-        ),
+          )
+        })()),
         records.length===0&&h("div",{style:{textAlign:"center",padding:"50px 20px",color:"rgba(255,255,255,0.3)",fontSize:13}},"まだデータがありません。",h("br"),"「データ入力」から月末残高を入力してください。")
       ),
 
